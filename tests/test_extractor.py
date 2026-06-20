@@ -2,7 +2,8 @@ import pandas as pd
 import pytest
 from unittest.mock import patch, MagicMock
 import sys
-sys.path.append("/workspaces/puprime-market-pipeline/src/pipeline")
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "src", "pipeline"))
 
 from extractor import fetch_forex_price, validate_response, validate_dataframe
 
