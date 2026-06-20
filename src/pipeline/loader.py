@@ -38,20 +38,25 @@ def create_table(conn) -> None:
     logger.info("Table forex_prices ready.")
 
 
-def load_to_db(df: pd.DataFrame) -> None:
+def load_to_db(df: pd.DataFrame) -> dict:
     """
-    Load transformed forex data into PostgreSQL.
+    Load transformed forex data into PostgreSQL with idempotent upserts.
 
     Args:
         df: Transformed DataFrame from transformer
+
+    Returns:
+        Dict with counts: {"attempted": int, "inserted": int, "skipped_duplicates": int}
     """
+    result = {"attempted": 0, "inserted": 0, "skipped_duplicates": 0}
+
     if df is None or df.empty:
         logger.warning("Empty DataFrame. Nothing to load.")
-        return
+        return result
 
     if not DATABASE_URL:
         logger.error("DATABASE_URL not found. Check your .env file.")
-        return
+        return result
 
     try:
         conn = psycopg2.connect(DATABASE_URL)
@@ -73,6 +78,13 @@ def load_to_db(df: pd.DataFrame) -> None:
             )
             for row in df.itertuples()
         ]
+        result["attempted"] = len(records)
+
+        # Count rows that already exist before inserting, so we can report
+        # inserted vs skipped instead of just "did something".
+        with conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) FROM forex_prices;")
+            before_count = cur.fetchone()[0]
 
         query = """
             INSERT INTO forex_prices (
@@ -85,9 +97,22 @@ def load_to_db(df: pd.DataFrame) -> None:
         with conn.cursor() as cur:
             execute_values(cur, query, records)
 
+        with conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) FROM forex_prices;")
+            after_count = cur.fetchone()[0]
+
         conn.commit()
         conn.close()
-        logger.info(f"Successfully loaded {len(records)} records into database.")
+
+        result["inserted"] = after_count - before_count
+        result["skipped_duplicates"] = result["attempted"] - result["inserted"]
+
+        logger.info(
+            f"Load complete: {result['inserted']} new rows inserted, "
+            f"{result['skipped_duplicates']} duplicates skipped "
+            f"(of {result['attempted']} attempted)."
+        )
+        return result
 
     except Exception as e:
         logger.error(f"Database load failed: {e}")
