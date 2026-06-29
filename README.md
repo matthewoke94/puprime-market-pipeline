@@ -10,7 +10,7 @@ A fault-tolerant ETL pipeline that pulls live forex prices, validates the respon
 
 ## Outcome
 
-Processes 3 currency pairs (EUR/USD, GBP/USD, USD/JPY) per run. Network failures are retried automatically with backoff; malformed API responses and bad data (negative prices, high < low inversions) are rejected before reaching the database. Every load reports exactly how many rows were new versus duplicates, giving full visibility into pipeline behaviour on every run.
+The pipeline successfully ingests live forex market data for multiple currency pairs, validates every response, enriches each record with trading indicators, and stores the results in PostgreSQL using idempotent upserts. Built-in retry logic, data quality validation, and duplicate prevention ensure the pipeline remains reliable, fault-tolerant, and safe to rerun without compromising data integrity. Each execution reports detailed loading metrics, providing clear visibility into pipeline performance and operational health.
 
 ---
 
@@ -117,11 +117,17 @@ Being transparent about what's not yet built, rather than overstating scope:
 - Retry logic covers network failures only, not rate-limit (HTTP 429) backoff specifically
 - No alerting on repeated pipeline failures (would be a natural extension)
 
-## Business value
+## Business Value
 
-This pipeline is the foundation layer for the rest of the portfolio: the [trading analytics dashboard](https://github.com/matthewoke94/puprime-trading-analytics) needs clean price data to benchmark trader performance against, and any future risk system needs a trustworthy, deduplicated source of market truth.
+This project demonstrates the foundation of a modern data engineering pipeline. By delivering clean, validated, and deduplicated market data into a centralized PostgreSQL database, it enables downstream analytics, trading dashboards, reporting, and risk monitoring systems to operate on trusted data.
+
+The pipeline is designed to integrate seamlessly with the **[PuPrime Trading Analytics Dashboard](https://github.com/matthewoke94/puprime-trading-analytics)** for business intelligence and can be extended to support the **[PuPrime Anomaly Detection System](https://github.com/matthewoke94/puprime-anomaly-detection)** for automated trading surveillance and risk monitoring.
+
+Its modular architecture also makes it straightforward to evolve into a production-grade platform using orchestration tools such as Apache Airflow, real-time streaming with Apache Kafka, or cloud-based data services as business requirements grow.
+
 
 ## Author
 
-Matthew James — Data Engineer
-GitHub: github.com/matthewoke94
+Matthew James
+
+Data Engineer | Python | SQL | ETL | Data Pipelines
